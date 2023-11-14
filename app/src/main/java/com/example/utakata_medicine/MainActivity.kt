@@ -3,7 +3,16 @@ package com.example.utakata_medicine
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -18,8 +27,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.utakata_medicine.ui.theme.UtakatamedicineTheme
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
 
@@ -32,7 +45,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-
+                    UtakataUnderTabLayout()
                 }
             }
         }
@@ -55,20 +68,88 @@ fun GreetingPreview() {
     }
 }
 
+data class Medicine (
+    val name: String,
+    val whentime: String,
+    val piecestr: String,
+    val hospital: Boolean,
+    val place: String,
+    )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UtakataMedicineTable(data: List<Medicine>){
+    UtakatamedicineTheme {
+        Scaffold(containerColor = MaterialTheme.colorScheme.surface) {
+                padding -> List(data.size) { index -> index to "Item $index"
+        }
+            val column1Weight = .3f
+            val column2Weight = .7f
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.background(color = Color.Gray)
+                ) {
+                    TableCell(text = "Column 1", weight = column1Weight)
+                    TableCell(text = "Column 2", weight = column2Weight)
+                }
+
+                data.map {
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        TableCell(text = it.name, weight = column1Weight)
+                        TableCell(text = it.piecestr, weight = column2Weight)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RowScope.TableCell(
+    text: String,
+    weight: Float
+){
+    Text(text = text,
+        Modifier
+            .border(1.dp, Color.Black)
+            .weight(weight)
+            .padding(8.dp))
+}
+
 @Preview(showBackground = true)
 @Composable
 fun UtakataUnderTabLayout(){
     var selectedItem by remember { mutableStateOf(0) }
     val items = listOf("お薬表","登録","服薬リスト")
+    val testData = Medicine("test","朝","2",true,"病院")
+    val testData2 = Medicine("test2","昼","2",false,"ドラッグストア")
+    val medicineData:List<Medicine> = listOf(
+        testData,testData2,testData.copy(),testData2.copy()
+        )
     UtakatamedicineTheme {
-        NavigationBar {
-            items.forEachIndexed {index,item ->
-                NavigationBarItem(
-                    selected = selectedItem == index ,
-                    onClick = { selectedItem = index },
-                    label = { Text(text = item)},
-                    icon = { Icon(Icons.Filled.Favorite, item)}
-                )
+        Column {
+            when (selectedItem) {
+                0 -> UtakataMedicineTable(data = medicineData)
+                1 -> Text("1")
+                2 -> Text("2")
+            }
+            NavigationBar {
+                items.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        selected = selectedItem == index,
+                        onClick = { selectedItem = index },
+                        label = { Text(text = item) },
+                        icon = { Icon(Icons.Filled.Favorite, item) }
+                    )
+                }
             }
         }
     }

@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.utakata_medicine.ui.theme.UtakatamedicineTheme
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
@@ -155,6 +156,9 @@ fun InputForm(modifier: Modifier){
             }
             Text(text = "場所")
             FinalCustomInput(value = inputname, onValueChange = {inputname = it},submit = submit)
+            FilledTonalButton(onClick = submit) {
+                Text(text = "登録")
+            }
         }
     }
 }
@@ -218,7 +222,8 @@ fun UtakataUnderTabLayout() {
                     0 -> MedicineTable(medicineData = medicineData)
                     1 -> InputForm(modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.7f).padding(16.dp))  //Text(text = "test2", modifier = Modifier.fillMaxHeight(0.7f))
+                        .fillMaxHeight(0.7f)
+                        .padding(16.dp))  //Text(text = "test2", modifier = Modifier.fillMaxHeight(0.7f))
                     2 -> Text(text = "test3", modifier = Modifier.fillMaxHeight(0.7f))
                 }
             }

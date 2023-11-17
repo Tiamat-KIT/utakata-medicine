@@ -1,6 +1,8 @@
 package com.example.utakata_medicine
 
+import android.content.ContentValues.TAG
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -45,6 +47,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+//import com.google.firebase.firestore.firestoreSettings
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -120,7 +125,7 @@ fun FinalCustomInput(
         onValueChange = onValueChange,
         // modifier = modifier,
         keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Password,
+            keyboardType = KeyboardType.Text,
             imeAction = ImeAction.Done,
         ),
         keyboardActions = KeyboardActions(
@@ -135,27 +140,59 @@ fun FinalCustomInput(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InputForm(modifier: Modifier){
+    val db = Firebase.firestore
+
     var ajax by remember { mutableStateOf(false) }
     var inputname by remember {mutableStateOf("")}
+    var inputwhentime by remember {mutableStateOf("")}
+    var inputpiecestr by remember {mutableStateOf("")}
+    var inputhospital by remember {mutableStateOf("")}
+    var inputplace by remember {mutableStateOf("")}
+
+    /*val inputlist = mutableListOf(
+        inputname,
+        inputwhentime,
+        inputpiecestr,
+        inputhospital,)*/
     val scope = rememberCoroutineScope()
     val submit = {
         scope.launch(Dispatchers.IO) {
             ajax = true
-            // ここにログイン処理を記述する
+            val medicineSubmitData = hashMapOf(
+                "name" to inputname,
+                "whentime" to inputwhentime,
+                "piece" to inputpiecestr,
+                "hospital" to inputhospital,
+                "place" to inputplace
+            )
+
+            db.collection("medicine")
+                .add(medicineSubmitData)
+                .addOnSuccessListener { documentReference ->
+                    Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
+                }
+                .addOnFailureListener { e ->
+                    Log.w(TAG, "Error adding document", e)
+                }
+            // 送信処理
             ajax = false
         }
         Unit
     }
-    val inputnamelist: List<String> = listOf("名前","時間","錠数","処方")//,"場所")
+    // val inputnamelist: List<String> = listOf("名前","時間","錠数","処方")//,"場所")
     UtakatamedicineTheme{
         Text(text = "お薬登録")
         Column(modifier = modifier) {
-            inputnamelist.forEachIndexed{index,name ->
-                Text(text = name)
-                CustomTextInput(value = inputname, onValueChange = {inputname = it}, label = inputnamelist[index])
-            }
+            Text(text = "名前")
+            CustomTextInput(value = inputname, onValueChange = {inputname = it}, label = "名前")
+            Text(text = "時間")
+            CustomTextInput(value = inputwhentime, onValueChange = {inputwhentime = it}, label = "時間")
+            Text(text = "錠数")
+            CustomTextInput(value = inputpiecestr, onValueChange = {inputpiecestr = it}, label = "錠数")
+            Text(text = "処方箋かそうでないか")
+            CustomTextInput(value = inputhospital, onValueChange = {inputhospital = it}, label = "処方箋ですか？")
             Text(text = "場所")
-            FinalCustomInput(value = inputname, onValueChange = {inputname = it},submit = submit)
+            FinalCustomInput(value = inputplace, onValueChange = {inputplace = it},submit = submit)
             FilledTonalButton(onClick = submit) {
                 Text(text = "登録")
             }
@@ -213,6 +250,20 @@ fun UtakataUnderTabLayout() {
     val medicineData: List<Medicine> = listOf(
         testData, testData2, testData.copy(), testData2.copy(), testData.copy()
     )
+
+    val db = Firebase.firestore
+    // var medicineHonbanData = MutableList(5){}
+    db.collection("medicine")
+        .get()
+        .addOnSuccessListener { result ->
+            //for (document in result) {
+                // medicineHonbanData.plus(document.data)
+                // Log.d(TAG, "${document.id} => ${document.data}")
+            //}
+        }
+        .addOnFailureListener { exception ->
+            Log.w(TAG, "Error getting documents.", exception)
+        }
     UtakatamedicineTheme {
         Column(
             // modifier = Modifier.fillMaxWidth().fillMaxHeight()

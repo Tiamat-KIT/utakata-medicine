@@ -1,8 +1,6 @@
 package com.example.utakata_medicine
 
-import android.content.ContentValues.TAG
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -10,7 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -30,7 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+// import androidx.compose.ui.tooling.preview.Preview
 import com.example.utakata_medicine.ui.theme.UtakatamedicineTheme
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,34 +36,31 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment.Companion.Bottom
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-//import com.google.firebase.firestore.firestoreSettings
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.asLiveData
+import kotlinx.coroutines.CoroutineScope
+
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
 
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val activityScope = CoroutineScope(SupervisorJob())
+        val db by lazy {MedicineRoomDatabase.getDatabase(this,activityScope)}
+        val repository by lazy {MedicineRepository(db.MedicineDao())}
+
         setContent {
             UtakatamedicineTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .fillMaxHeight(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    UtakataUnderTabLayout()
-                }
+                UtakataUnderTabLayout(repository)
             }
         }
     }
@@ -92,7 +85,6 @@ fun CustomTextInput(
     value: String,
     onValueChange: (String) -> Unit,
     label:  String
-    //submit: () -> Unit
 ){
     val foucusManager = LocalFocusManager.current
     OutlinedTextField(
@@ -115,7 +107,6 @@ fun CustomTextInput(
 @Composable
 fun FinalCustomInput(
     value: String,
-    // modifier: Modifier = Modifier,
     onValueChange: (String) -> Unit,
     submit: () -> Unit,
 ) {
@@ -123,7 +114,6 @@ fun FinalCustomInput(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        // modifier = modifier,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Text,
             imeAction = ImeAction.Done,
@@ -139,8 +129,7 @@ fun FinalCustomInput(
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InputForm(modifier: Modifier){
-    val db = Firebase.firestore
+fun InputForm(modifier: Modifier,medicineRepository: MedicineRepository){
 
     var ajax by remember { mutableStateOf(false) }
     var inputname by remember {mutableStateOf("")}
@@ -149,40 +138,27 @@ fun InputForm(modifier: Modifier){
     var inputhospital by remember {mutableStateOf("")}
     var inputplace by remember {mutableStateOf("")}
 
-    /*val inputlist = mutableListOf(
-        inputname,
-        inputwhentime,
-        inputpiecestr,
-        inputhospital,)*/
     val scope = rememberCoroutineScope()
     val submit = {
         scope.launch(Dispatchers.IO) {
             ajax = true
-            val medicineSubmitData = hashMapOf(
-                "name" to inputname,
-                "whentime" to inputwhentime,
-                "piece" to inputpiecestr,
-                "hospital" to inputhospital,
-                "place" to inputplace
+            val SubmitData = MedicineClass (
+                inputname,
+                inputwhentime,
+                inputpiecestr,
+                inputhospital,
+                inputplace
             )
 
-            db.collection("medicine")
-                .add(medicineSubmitData)
-                .addOnSuccessListener { documentReference ->
-                    Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
-                }
-                .addOnFailureListener { e ->
-                    Log.w(TAG, "Error adding document", e)
-                }
+            medicineRepository.insert(SubmitData)
             // 送信処理
             ajax = false
         }
         Unit
     }
-    // val inputnamelist: List<String> = listOf("名前","時間","錠数","処方")//,"場所")
     UtakatamedicineTheme{
         Text(text = "お薬登録")
-        Column(modifier = modifier) {
+        Column(modifier = modifier.padding(25.dp,15.dp,0.dp,0.dp)) {
             Text(text = "名前")
             CustomTextInput(value = inputname, onValueChange = {inputname = it}, label = "名前")
             Text(text = "時間")
@@ -202,16 +178,17 @@ fun InputForm(modifier: Modifier){
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MedicineTable(medicineData: List<Medicine>){
+fun MedicineTable(repository: MedicineRepository){
+    val MedicineAllData: LiveData<List<MedicineClass>> = repository.allMedcines.asLiveData()
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         //これ消すとダメっぽい。
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.7f)
+            .fillMaxHeight(0.7f),
     )
     {
-        padding -> List(medicineData.size) { index -> index to "Item $index" }
+        padding -> MedicineAllData.value?.size?.let { List(it) { index -> index to "Item $index" } }
         val column1Weight = .3f
         val column2Weight = .7f
 
@@ -224,78 +201,58 @@ fun MedicineTable(medicineData: List<Medicine>){
             Row(
                 modifier = Modifier.background(color = Color.Gray)
             ) {
-                TableCell(text = "Column 1", weight = column1Weight)
-                TableCell(text = "Column 2", weight = column2Weight)
+                TableCell(text = "名前", weight = column1Weight)
+                TableCell(text = "錠数", weight = column2Weight)
             }
 
-            medicineData.map {
+            MedicineAllData.value?.map {
                 Row(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    TableCell(text = it.name, weight = column1Weight)
-                    TableCell(text = it.piecestr, weight = column2Weight)
+                    it.let { it -> it.name?.let { it1 -> TableCell(text = it1, weight = column1Weight) } }
+                    it.let {it -> it.piecestr?.let { it1 -> TableCell(text = it1, weight = column2Weight) } }
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
+// @Preview(showBackground = true)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UtakataUnderTabLayout() {
+fun UtakataUnderTabLayout(medicineRepository: MedicineRepository) {
     var selectedItem by remember { mutableStateOf(0) }
     val items = listOf("お薬表", "登録", "服薬リスト")
-    val testData = Medicine("test", "朝", "2", true, "病院")
-    val testData2 = Medicine("test2", "昼", "2", false, "ドラッグストア")
-    val medicineData: List<Medicine> = listOf(
-        testData, testData2, testData.copy(), testData2.copy(), testData.copy()
-    )
-
-    val db = Firebase.firestore
-    // var medicineHonbanData = MutableList(5){}
-    db.collection("medicine")
-        .get()
-        .addOnSuccessListener { result ->
-            //for (document in result) {
-                // medicineHonbanData.plus(document.data)
-                // Log.d(TAG, "${document.id} => ${document.data}")
-            //}
-        }
-        .addOnFailureListener { exception ->
-            Log.w(TAG, "Error getting documents.", exception)
-        }
+    /*val medicineHonbanData = arrayListOf<MedicineClass>(
+        MedicineClass(
+            "test",
+            "朝",
+            "2",
+            "はい",
+            "病院"
+            ))*/
     UtakatamedicineTheme {
-        Column(
-            // modifier = Modifier.fillMaxWidth().fillMaxHeight()
-        ) {
-            Row{
+        Scaffold(
+            bottomBar = {NavigationBar(/*modifier = Modifier.fillMaxWidth().fillMaxHeight()*/) {
+                items.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        selected = selectedItem == index,
+                        onClick = { selectedItem = index },
+                        label = { Text(text = item) },
+                        icon = { Icon(Icons.Filled.Favorite, item) }
+                    )
+                }
+            }},) {
+                padding -> List(items.size) { index -> index to "Item $index" }
                 when (selectedItem) {
-                    0 -> MedicineTable(medicineData = medicineData)
+                    0 -> MedicineTable(repository = medicineRepository)
                     1 -> InputForm(modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.7f)
-                        .padding(16.dp))  //Text(text = "test2", modifier = Modifier.fillMaxHeight(0.7f))
+                        .padding(16.dp),medicineRepository)  //Text(text = "test2", modifier = Modifier.fillMaxHeight(0.7f))
                     2 -> Text(text = "test3", modifier = Modifier.fillMaxHeight(0.7f))
                 }
-            }
-            Spacer(modifier = Modifier.padding(90.dp))
-            Row {
-                NavigationBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight()
-                        .align(Bottom)//LocalConfiguration.current.screenHeightDp.dp / 7)
-                ) {
-                    items.forEachIndexed { index, item ->
-                        NavigationBarItem(
-                            selected = selectedItem == index,
-                            onClick = { selectedItem = index },
-                            label = { Text(text = item) },
-                            icon = { Icon(Icons.Filled.Favorite, item) }
-                        )
-                    }
-                }
-            }
+
         }
     }
 }
